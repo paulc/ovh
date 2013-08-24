@@ -1,0 +1,19 @@
+		sshd_enable="YES"
+		ntpd_enable="YES"
+		fsck_y_enable="YES"
+		dumpdev="NO"
+		syslogd_flags="-s -b 127.0.0.1"
+
+		gateway_enable="YES"
+		pf_enable="YES"
+		pflog_enable="YES"
+
+		ifconfig_em0="inet 37.187.16.95 netmask 255.255.255.0 broadcast 37.187.16.255"
+		defaultrouter="37.187.16.254"
+		hostname="ovh.pchak.net"
+
+		# IPv6 configuration
+		ifconfig_em0_ipv6="inet6 accept_rtadv 2001:41d0:a:105f::1 prefixlen 64"
+		ipv6_defaultrouter="2001:41d0:a:10ff:ff:ff:ff:ff"
+
+		ezjail_enable="YES"

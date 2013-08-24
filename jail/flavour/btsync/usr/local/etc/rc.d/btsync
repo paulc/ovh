@@ -1,0 +1,30 @@
+
+#!/bin/sh
+#
+# PROVIDE: btsync
+# REQUIRE: LOGIN DAEMON NETWORKING
+# KEYWORD: shutdown
+#
+
+. /etc/rc.subr
+
+name="btsync"
+rcvar="btsync_enable"
+
+load_rc_config $name
+
+required_files=$btsync_bin
+
+: ${btsync_enable="NO"}
+: ${btsync_user="btsync"}
+: ${btsync_bin="/usr/local/bin/btsync"}
+: ${btsync_config="/home/btsync/.btsync.conf"}
+
+command=${btsync_bin}
+
+if [ -e ${btsync_config} ]
+then
+        command_args="--config ${btsync_config}"
+fi
+
+run_rc_command "$1"
