@@ -60,6 +60,7 @@ update_rcconf_conf() {
 	ex -s /etc/rc.conf <<-EOM
 		/^ntpdate_enable/d
 		/^ntpdate_hosts/d
+		/^named_enable/d
 		/^ipv6_enable/d
 		/^ipv6_network_interfaces/d
 		/^ipv6_static_routes/d
@@ -151,7 +152,7 @@ case "$yn" in
 		_c update_fstab
 		_c update_resolv_conf
 		_c update_sysctl_conf
-		_c update_rcconf_conf $_HOSTNAME
+		_c update_rcconf_conf
 		_c update_sshd_config $_IP $_IPV6
 		_c remove_ovh_setup
 		_c add_ssh_keys
