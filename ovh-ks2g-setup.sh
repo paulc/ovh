@@ -51,15 +51,12 @@ update_resolv_conf() {
 		nameserver 2001:4860:4860::8888
 		nameserver 2001:4860:4860::8844
 	EOM
-
 }
 
-update_rcconf_conf() {
+update_rc_conf() {
 	_HOSTNAME=$1
 	cp /etc/rc.conf /etc/rc.conf.ovh
 	ex -s /etc/rc.conf <<-EOM
-		/^ntpdate_enable/d
-		/^ntpdate_hosts/d
 		/^named_enable/d
 		/^ipv6_enable/d
 		/^ipv6_network_interfaces/d
@@ -71,7 +68,6 @@ update_rcconf_conf() {
 
 		# Local setup
 
-		ntpd_enable="YES"
 		syslogd_flags="-s -b 127.0.0.1"
 		gateway_enable="YES"
 		pf_enable="YES"
@@ -81,6 +77,20 @@ update_rcconf_conf() {
 		wq
 	EOM
 }
+
+update_crontab() {
+	cp /etc/crontab /etc/crontab.ovh
+	ex -s /etc/crontab <<-EOM
+		$
+		a
+		# Run ntpd -q hourly (rather than as daemon)
+		0	*	*	*	*	root	/usr/sbin/ntpd -gq >/dev/null
+		.
+		wq
+	EOM
+}
+
+
 
 update_sshd_config() {
 	_IP=$1
@@ -152,7 +162,8 @@ case "$yn" in
 		_c update_fstab
 		_c update_resolv_conf
 		_c update_sysctl_conf
-		_c update_rcconf_conf
+		_c update_crontab
+		_c update_rc_conf
 		_c update_sshd_config $_IP $_IPV6
 		_c remove_ovh_setup
 		_c add_ssh_keys
