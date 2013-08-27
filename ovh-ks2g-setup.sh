@@ -4,19 +4,27 @@ _RED=$(echo -e "\e[0;31m")
 _CYAN=$(echo -e "\e[0;36m")
 
 set -e
-_COLOUR=0
+
+trap 'rm -f /tmp/err.* /tmp/out.*' EXIT
 
 _c() {
-  _cmd="$@"
-  [ $_COLOUR eq 1 ] && printf "${_RED}"
-  printf "%s [%s] %-40s\n" "$(date '+%b %d %T')" $name "CMD: $_cmd"
-  [ $_COLOUR eq 1 ] && printf "${_CYAN}"
-  eval "$_cmd" | sed -e 's/^/     | /'
-  _err=$?
-  [ $_COLOUR eq 1 ] && printf "${_RED}     "
-  [ $_err -eq 0 ] && printf "[OK]\n" || printf "[ERROR]\n"
-  [ $_COLOUR eq 1 ] && printf "${_NORMAL}"
-  return $_err 
+	_cmd="$@"
+	_out=$(mktemp -t out)
+	_err=$(mktemp -t err)
+	printf "${_RED}"
+	printf "%s [%s] %-40s\n" "$(date '+%b %d %T')" $name "CMD: $_cmd"
+	printf "${_NORMAL}"
+	eval "$_cmd" >${_out} 2>${_err}
+	_status=$?
+	printf "${_CYAN}"
+	sed -e 's/^/     | /' <${_out}
+	printf "${_YELLOW}"
+	sed -e 's/^/     ! /' <${_err}
+	printf "${_RED}     "
+	[ $_status -eq 0 ] && printf "[OK]\n" || printf "[ERROR]\n"
+	printf "${_NORMAL}"
+	rm -f ${_out} ${_err}
+	return $_status
 }
 
 update_system() {
@@ -25,19 +33,19 @@ update_system() {
 
 update_fstab() {
 	cp /etc/fstab /etc/fstab.ovh
-	cat > /etc/fstab <<-EOM
+	cat > /etc/fstab <<-'EOM'
 		# Device                Mountpoint      FStype  Options         Dump    Pass#
 		/dev/ada0s1a            /               ufs             rw      1       1
 		/dev/ada0s1b.eli        none            swap            sw      0       0
 		tmpfs                   /tmp            tmpfs           rw,noexec,mode=777,size=1073741824 0 0
 		proc                    /proc           procfs          rw      0       0
-		#/dev/ada0s1d            /tank           ufs             rw      2       2
+		#/dev/ada0s1d           /pool           ufs             rw      2       2
 	EOM
 }
 
 update_sysctl_conf() {
 	cp /etc/sysctl.conf /etc/sysctl.conf.ovh
-	ex -s /etc/sysctl.conf <<-EOM
+	ex -s /etc/sysctl.conf <<-'EOM'
 		/net.inet6.ip6.accept_rtadv/d
 		a
 		net.inet6.ip6.accept_rtadv=1
@@ -48,7 +56,7 @@ update_sysctl_conf() {
 
 update_resolv_conf() {
 	cp /etc/resolv.conf /etc/resolv.conf.ovh
-	cat > /etc/resolv.conf <<-EOM
+	cat > /etc/resolv.conf <<-'EOM'
 		nameserver 8.8.8.8
 		nameserver 8.8.4.4
 		nameserver 2001:4860:4860::8888
@@ -60,7 +68,7 @@ update_rc_conf() {
 	# Backup rc.conf
 	cp /etc/rc.conf /etc/rc.conf.ovh
 	# Yank network parameters from old rc.conf & generate new conf
-	ex -s /etc/rc.conf.ovh <<-EOM
+	ex -s /etc/rc.conf.ovh <<-'EOM'
 		/^ifconfig_em0/y a
 		/^defaultrouter/y b
 		/^ifconfig_em0_ipv6/y c
@@ -100,7 +108,7 @@ update_rc_conf() {
 		wq
 	EOM
 	# Create start script to assign lo1 network aliases
-	cat > /etc/start_if.lo1 <<-EOM
+	cat > /etc/start_if.lo1 <<-'EOM'
 		#!/bin/sh
 		for i in $(jot -w 10.0.1. 24)
 		do
@@ -136,7 +144,7 @@ update_rc_conf() {
 
 update_crontab() {
 	cp /etc/crontab /etc/crontab.ovh
-	ex -s /etc/crontab <<-EOM
+	ex -s /etc/crontab <<-'EOM'
 		$
 		a
 		# Run ntpd -q hourly (rather than as daemon)
@@ -152,9 +160,9 @@ update_sshd_config() {
 	cp /etc/ssh/sshd_config /etc/ssh/sshd_config.ovh
 	cat > /etc/ssh/sshd_config <<-EOM
 		Port 22
-		ListenAddress $_IP
+		ListenAddress ${_IP}
 		ListenAddress 127.0.0.1
-		ListenAddress $_IPV6
+		ListenAddress ${_IPV6}
 		ListenAddress ::1
 
 		PermitRootLogin yes
@@ -180,7 +188,7 @@ remove_ovh_setup() {
 	rmuser -vy ovh
 	rm -rf /usr/local/rtm/
 	pkg_delete -f \*
-	ex -s /etc/crontab <<-EOM
+	ex -s /etc/crontab <<-'EOM'
 		/rtm/d
 		wq
 	EOM
@@ -206,8 +214,7 @@ cat <<-EOM
 	
 EOM
 
-#read -p "Continue [y/n]: " yn
-yn=Y
+read -p "Continue [y/n]: " yn
 
 case "$yn" in
 	[yY])
@@ -223,6 +230,4 @@ case "$yn" in
 		_c setup_ezjail
 	;;
 esac
-
-echo "=== SETUP COMPLETE"
 
