@@ -3,16 +3,19 @@ _NORMAL=$(echo -e "\e[0m")
 _RED=$(echo -e "\e[0;31m")
 _CYAN=$(echo -e "\e[0;36m")
 
+set -e
+_COLOUR=0
+
 _c() {
   _cmd="$@"
-  printf "${_RED}"
+  [ $_COLOUR eq 1 ] && printf "${_RED}"
   printf "%s [%s] %-40s\n" "$(date '+%b %d %T')" $name "CMD: $_cmd"
-  printf "${_CYAN}"
+  [ $_COLOUR eq 1 ] && printf "${_CYAN}"
   eval "$_cmd" | sed -e 's/^/     | /'
   _err=$?
-  printf "${_RED}     "
+  [ $_COLOUR eq 1 ] && printf "${_RED}     "
   [ $_err -eq 0 ] && printf "[OK]\n" || printf "[ERROR]\n"
-  printf "${_NORMAL}"
+  [ $_COLOUR eq 1 ] && printf "${_NORMAL}"
   return $_err 
 }
 
@@ -167,11 +170,9 @@ update_sshd_config() {
 }
 
 add_ssh_keys() {
-	while read -p 'SSH Public Key (root access): ' k
-	do
-		[ ${#k} -eq 0 ] && break
-		echo $k >> /root/.ssh/authorized_keys
-	done
+	cat > /root/.ssh/authorized_keys <<-EOM
+		ssh-dss AAAAB3NzaC1kc3MAAACBAMfem4jte5ZNQQSey7D4X79Qkdiez+Y5vDHGsViqax8qAzMzPsDKGAAPkHhGsxjVpkNFU7XW+34GuXdNGnMUBfWfsx0nyF5t/sJagwpfOLRWPeqgblPnkRNKoeodVfrYZpo2o/4QVwGElZa9FE8XIPp7djMD2JrcBqYsSjjwJPNfAAAAFQCB49PxkuhSa5vickeUNdpNtVPpNQAAAIA7URcvIH0FlGSTqcQd9SjPIYFySHh4GcgSRbrmA8xhDoT/NAcBJN6EQuvsSPSxCJ++r2qd0qB1usVgzYurEraGaJXtLjd48ygYBit3x0qz7NULf+XjXb16He2ZrLBuiRgXcfumC+tA02sKosQV2PnOPLZ8tjgeqeHyiy3XnmgKrgAAAIBPBQuWS9S8xnS0fIX+CJmQGnekPU10bOsyyT1CO0xY1lyf7TmXTI0PpU0oF4v4JT/m+FAx0/+6sc78Rlv17SyFDm/xI5Rj6vFOCTRriNI0g+ZLjjqIf0KksTTEo4F0NPO7sOvHABvTXp/9L8qb7kCy6qVGRWDImA1H2upqhWJ+4A== paulc@Ians-iMac.local
+	EOM
 }
 
 remove_ovh_setup() {
@@ -205,7 +206,8 @@ cat <<-EOM
 	
 EOM
 
-read -p "Continue [y/n]: " yn
+#read -p "Continue [y/n]: " yn
+yn=Y
 
 case "$yn" in
 	[yY])
@@ -221,4 +223,6 @@ case "$yn" in
 		_c setup_ezjail
 	;;
 esac
+
+echo "=== SETUP COMPLETE"
 
