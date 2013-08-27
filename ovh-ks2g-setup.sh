@@ -278,9 +278,9 @@ EOM
 if [ "$1" = "-interactive" ]
 then
 
-	_rollback=$1
+	_rollback=$2
 
-	cat <<-EOM
+	cat <<EOM
 
 	Modules:	
 
@@ -295,7 +295,7 @@ then
 		add_ssh_keys
 		setup_ezjail
 		all
-	EOM
+EOM
 
 	read -p "Module: " module
 
