@@ -3,8 +3,6 @@ _NORMAL=$(echo -e "\e[0m")
 _RED=$(echo -e "\e[0;31m")
 _CYAN=$(echo -e "\e[0;36m")
 
-set -e
-
 trap 'rm -f /tmp/err.* /tmp/out.*' EXIT
 
 _c() {
@@ -98,8 +96,8 @@ update_rc_conf() {
 	if [ "$1" = "-rollback" ]
 	then
 		[ -f /etc/rc.conf.ovh ] && cp /etc/resolv.conf.ovh /etc/resolv.conf
-		rm /etc/start_if.lo1
-		rm /etc/pf.conf
+		rm -f/etc/start_if.lo1
+		rm -f /etc/pf.conf
 		return
 	fi
 	cp /etc/rc.conf /etc/rc.conf.ovh
@@ -259,7 +257,7 @@ setup_ezjail() {
 	pkg_add -r ezjail
 }
 
-# Main
+##### Main
 
 _EXT_IF=$(route -n get default | awk '/interface:/ { print $2 }')
 _IP=$(ifconfig $_EXT_IF | awk '/inet[^6]/ { print $2; exit }')
@@ -275,85 +273,13 @@ cat <<-EOM
 	
 EOM
 
-if [ "$1" = "-interactive" ]
-then
-
-	_rollback=$2
-
-	cat <<EOM
-
-	Modules:	
-
-		update_system
-		update_fstab
-		update_resolv_conf
-		update_sysctl_conf
-		update_crontab
-		update_rc_conf
-		update_sshd_config $_IP $_IPV6
-		remove_ovh_setup
-		add_ssh_keys
-		setup_ezjail
-		all
-EOM
-
-	read -p "Module: " module
-
-	case "$module" in
-		all)
-			_c update_system $_rollback
-			_cc update_fstab $_rollback
-			_cc update_resolv_conf $_rollback
-			_cc update_sysctl_conf $_rollback
-			_cc update_crontab $_rollback
-			_cc update_rc_conf $_rollback
-			_cc update_sshd_config $_IP $_IPV6 $_rollback
-			_cc remove_ovh_setup $_rollback
-			_cc add_ssh_keys $_rollback
-			_cc setup_ezjail $_rollback
-			;;
-		update_system)
-			_cc update_system $_rollback
-			;;
-		update_fstab)
-			_cc update_fstab $_rollback
-			;;
-		update_resolv_conf)
-			_cc update_resolv_conf $_rollback
-			;;
-		update_sysctl_conf)
-			_cc update_sysctl_conf $_rollback
-			;;
-		update_crontab)
-			_cc update_crontab $_rollback
-			;;
-		update_rc_conf)
-			_cc update_rc_conf $_rollback
-			;;
-		update_sshd_config)
-			_cc update_sshd_config $_rollback $_IP $_IPV6
-			;;
-		remove_ovh_setup)
-			_cc remove_ovh_setup $_rollback
-			;;
-		add_ssh_keys)
-			_cc add_ssh_keys -interactive $_rollback
-			;;
-		setup_ezjail)
-			_cc setup_ezjail $_rollback
-			;;
-		*)	echo "Invalid module"
-			;;
-	esac
-else
-	_c update_system
-	_c update_fstab
-	_c update_resolv_conf
-	_c update_sysctl_conf
-	_c update_crontab
-	_c update_rc_conf
-	_c update_sshd_config $_IP $_IPV6
-	_c remove_ovh_setup
-	_c add_ssh_keys
-	_c setup_ezjail
-fi
+_c update_system
+_cc update_fstab
+_cc update_resolv_conf
+_cc update_sysctl_conf
+_cc update_crontab
+_cc update_rc_conf
+_cc update_sshd_config $_IP $_IPV6
+_cc remove_ovh_setup
+_cc add_ssh_keys
+_cc setup_ezjail
