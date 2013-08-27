@@ -36,20 +36,10 @@ _cc() {
 }
 
 update_system() {
-	if [ "$1" = "-rollback" ]
-	then
-		echo "Cant rollback update_system"
-		return
-	fi
 	(freebsd-update fetch && freebsd-update install) | cat 
 }
 
 update_fstab() {
-	if [ "$1" = "-rollback" ]
-	then
-		[ -f /etc/fstab.ovh ] && cp /etc/fstab.ovh /etc/fstab
-		return
-	fi
 	cp /etc/fstab /etc/fstab.ovh
 	cat > /etc/fstab <<-'EOM'
 		# Device                Mountpoint      FStype  Options         Dump    Pass#
@@ -62,11 +52,6 @@ update_fstab() {
 }
 
 update_sysctl_conf() {
-	if [ "$1" = "-rollback" ]
-	then
-		[ -f /etc/sysctl.conf.ovh ] && cp /etc/sysctl.conf.ovh /etc/sysctl.conf
-		return
-	fi
 	cp /etc/sysctl.conf /etc/sysctl.conf.ovh
 	ex -s /etc/sysctl.conf <<-'EOM'
 		/net.inet6.ip6.accept_rtadv/d
@@ -78,11 +63,6 @@ update_sysctl_conf() {
 }
 
 update_resolv_conf() {
-	if [ "$1" = "-rollback" ]
-	then
-		[ -f /etc/resolv.conf.ovh ] && cp /etc/resolv.conf.ovh /etc/resolv.conf
-		return
-	fi
 	cp /etc/resolv.conf /etc/resolv.conf.ovh
 	cat > /etc/resolv.conf <<-'EOM'
 		nameserver 8.8.8.8
@@ -93,13 +73,6 @@ update_resolv_conf() {
 }
 
 update_rc_conf() {
-	if [ "$1" = "-rollback" ]
-	then
-		[ -f /etc/rc.conf.ovh ] && cp /etc/resolv.conf.ovh /etc/resolv.conf
-		rm -f/etc/start_if.lo1
-		rm -f /etc/pf.conf
-		return
-	fi
 	cp /etc/rc.conf /etc/rc.conf.ovh
 	# Yank network parameters from old rc.conf & generate new conf
 	ex -s /etc/rc.conf.ovh <<-'EOM'
@@ -177,11 +150,6 @@ update_rc_conf() {
 }
 
 update_crontab() {
-	if [ "$1" = "-rollback" ]
-	then
-		[ -f /etc/crontab.ovh ] && cp /etc/crontab.ovh /etc/crontab
-		return
-	fi
 	cp /etc/crontab /etc/crontab.ovh
 	ex -s /etc/crontab <<-'EOM'
 		$
@@ -194,11 +162,6 @@ update_crontab() {
 }
 
 update_sshd_config() {
-	if [ "$1" = "-rollback" ]
-	then
-		[ -f /etc/ssh/sshd_config.ovh ] && cp /etc/ssh/sshd_config.ovh /etc/ssh/sshd_config
-		return
-	fi
 	_IP=$1
 	_IPV6=$2
 	cp /etc/ssh/sshd_config /etc/ssh/sshd_config.ovh
@@ -222,22 +185,12 @@ update_sshd_config() {
 }
 
 add_ssh_keys() {
-	if [ "$1" = "-rollback" ]
-	then
-		rm -f /root/.ssh/authorized_keys
-		return
-	fi
 	cat > /root/.ssh/authorized_keys <<-EOM
 		ssh-dss AAAAB3NzaC1kc3MAAACBAMfem4jte5ZNQQSey7D4X79Qkdiez+Y5vDHGsViqax8qAzMzPsDKGAAPkHhGsxjVpkNFU7XW+34GuXdNGnMUBfWfsx0nyF5t/sJagwpfOLRWPeqgblPnkRNKoeodVfrYZpo2o/4QVwGElZa9FE8XIPp7djMD2JrcBqYsSjjwJPNfAAAAFQCB49PxkuhSa5vickeUNdpNtVPpNQAAAIA7URcvIH0FlGSTqcQd9SjPIYFySHh4GcgSRbrmA8xhDoT/NAcBJN6EQuvsSPSxCJ++r2qd0qB1usVgzYurEraGaJXtLjd48ygYBit3x0qz7NULf+XjXb16He2ZrLBuiRgXcfumC+tA02sKosQV2PnOPLZ8tjgeqeHyiy3XnmgKrgAAAIBPBQuWS9S8xnS0fIX+CJmQGnekPU10bOsyyT1CO0xY1lyf7TmXTI0PpU0oF4v4JT/m+FAx0/+6sc78Rlv17SyFDm/xI5Rj6vFOCTRriNI0g+ZLjjqIf0KksTTEo4F0NPO7sOvHABvTXp/9L8qb7kCy6qVGRWDImA1H2upqhWJ+4A== paulc@Ians-iMac.local
 	EOM
 }
 
 remove_ovh_setup() {
-	if [ "$1" = "-rollback" ]
-	then
-		echo "Cant rollback remove_ovh_setup"
-		return
-	fi
 	rm -f /root/.ssh/authorized_keys2
 	rmuser -vy ovh
 	rm -rf /usr/local/rtm/
@@ -249,11 +202,6 @@ remove_ovh_setup() {
 }
 
 setup_ezjail() {
-	if [ "$1" = "-rollback" ]
-	then
-		pkg_delete ezjail\*
-		return
-	fi
 	pkg_add -r ezjail
 }
 
@@ -273,13 +221,27 @@ cat <<-EOM
 	
 EOM
 
-_c update_system
-_cc update_fstab
-_cc update_resolv_conf
-_cc update_sysctl_conf
-_cc update_crontab
-_cc update_rc_conf
-_cc update_sshd_config $_IP $_IPV6
-_cc remove_ovh_setup
-_cc add_ssh_keys
-_cc setup_ezjail
+if [ -t 1 ]
+then
+	_c update_system
+	_cc update_fstab
+	_cc update_resolv_conf
+	_cc update_sysctl_conf
+	_cc update_crontab
+	_cc update_rc_conf
+	_cc update_sshd_config $_IP $_IPV6
+	_cc remove_ovh_setup
+	_cc add_ssh_keys
+	_cc setup_ezjail
+else
+	_c update_system
+	_c update_fstab
+	_c update_resolv_conf
+	_c update_sysctl_conf
+	_c update_crontab
+	_c update_rc_conf
+	_c update_sshd_config $_IP $_IPV6
+	_c remove_ovh_setup
+	_c add_ssh_keys
+	_c setup_ezjail
+fi
