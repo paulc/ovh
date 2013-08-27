@@ -54,27 +54,80 @@ update_resolv_conf() {
 }
 
 update_rc_conf() {
-	_HOSTNAME=$1
+	# Backup rc.conf
 	cp /etc/rc.conf /etc/rc.conf.ovh
-	ex -s /etc/rc.conf <<-EOM
-		/^named_enable/d
-		/^ipv6_enable/d
-		/^ipv6_network_interfaces/d
-		/^ipv6_static_routes/d
-		/^ipv6_route_ovhgw/d
-		/^ifconfig_em0_ipv6/s/prefixlen 128/prefixlen 64 accept_rtadv/
-		$
+	# Yank network parameters from old rc.conf & generate new conf
+	ex -s /etc/rc.conf.ovh <<-EOM
+		/^ifconfig_em0/y a
+		/^defaultrouter/y b
+		/^ifconfig_em0_ipv6/y c
+		/^ipv6_defaultrouter/y d
+		/^hostname/y e
+		ex /etc/rc.conf
+		1,$d
+		a
+		# System
+		fsck_y_enable="YES"
+		dumpdev="NO"
+		cloned_interfaces="lo1"
+
+		# IPv4
+		.
+		put a
+		put b
 		a
 
-		# Local setup
-
+		# IPv6
+		.
+		put c
+		/^ifconfig_em0_ipv6/s/prefixlen 128/prefixlen 64 accept_rtadv/
+		put d
+		put e
+		a
+		# Services
+		ntpdate_enable="YES"
+		ntpdate_hosts="213.186.33.99"
 		syslogd_flags="-s -b 127.0.0.1"
+		sshd_enable="YES"
 		gateway_enable="YES"
 		pf_enable="YES"
 		pflog_enable="YES"
 		ezjail_enable="YES"
 		.
 		wq
+	EOM
+	# Create start script to assign lo1 network aliases
+	cat > /etc/start_if.lo1 <<-EOM
+		#!/bin/sh
+		for i in $(jot -w 10.0.1. 24)
+		do
+			ifconfig lo1 inet $i/32 alias
+		done
+	EOM
+	chmod 755 /etc/start_if.lo1
+	# Create PF ruleset
+	#  Enable NAT on lo1 (for jails) and block all other services except ssh
+	#  Include anchors to dynamically load rdr/filter rules
+	cat > /etc/pf.conf <<-'EOM'
+
+		ext_if = "{ em0 }"
+		nat_if = "{ lo1 }"
+
+		tcp_services = "{ ssh }"
+
+		nat pass on $ext_if from $nat_if to any -> $ext_if
+
+		rdr-anchor redirect-anchor
+
+		set skip on lo1
+		antispoof for $ext_if
+
+		block in log on $ext_if proto { udp tcp }
+
+		pass out on $ext_if keep state
+		pass in on $ext_if proto tcp to $ext_if port $tcp_services keep state
+
+		anchor filter-anchor
 	EOM
 }
 
@@ -89,8 +142,6 @@ update_crontab() {
 		wq
 	EOM
 }
-
-
 
 update_sshd_config() {
 	_IP=$1
