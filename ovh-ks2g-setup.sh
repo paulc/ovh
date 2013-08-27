@@ -275,7 +275,7 @@ cat <<-EOM
 	
 EOM
 
-if [ "$0" = "-interactive" ]
+if [ "$1" = "-interactive" ]
 then
 
 	_rollback=$1
