@@ -301,7 +301,7 @@ EOM
 
 	case "$module" in
 		all)
-			_c update_system
+			_c update_system $_rollback
 			_cc update_fstab $_rollback
 			_cc update_resolv_conf $_rollback
 			_cc update_sysctl_conf $_rollback
