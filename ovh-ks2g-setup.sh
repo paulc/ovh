@@ -50,6 +50,8 @@ update_sysctl_conf() {
 	_backup /etc/sysctl.conf
 	cat > /etc/sysctl.conf <<-'EOM'
 		net.inet6.ip6.accept_rtadv=1
+		net.link.ether.inet.log_arp_movements=0
+		net.inet6.ip6.auto_linklocal=0
 	EOM
 	printf -- "----- /etc/sysctl.conf\n"
 	cat /etc/sysctl.conf
@@ -74,7 +76,7 @@ update_rc_conf() {
 	_EXT_IF=$(route -n get -inet default | awk '/interface:/ { print $2 }')
 	_GATEWAY=$(route -n get -inet default | awk '/gateway:/ { print $2 }')
 	_HOSTNAME=$(hostname)
-	_IP=$(ifconfig $_EXT_IF | awk '/inet[^6]/ { print $0; exit }')
+	_IP=$(ifconfig $_EXT_IF | | awk '/inet[^6]/ { printf( "inet %s netmask %s broadcast %s",$2,$4,$6); exit }')
 	_IPV6=$(ifconfig $_EXT_IF | awk '/inet6/ { if ( substr($2,0,4) != "fe80" ) { print "inet6 " $2 " prefixlen 64 accept_rtadv"; exit } }')
 	_IPV6_GATEWAY=$(sed -ne 's/"//g' -e 's/ipv6_defaultrouter=//p' /etc/rc.conf)
 	
@@ -150,6 +152,12 @@ create_pf_conf() {
 	cat /etc/pf.conf
 }
 
+set_localtime() {
+	_backup /etc/localtime
+	cp /usr/share/zoneinfo/UTC /etc/localtime
+	date
+}
+
 update_crontab() {
 	_backup /etc/crontab
 	cat >> /etc/crontab <<-'EOM'
@@ -181,8 +189,8 @@ update_sshd_config() {
 
 		Subsystem     sftp     /usr/libexec/sftp-server
 	EOM
-	printf -- "----- /etc/ssh/sshd_conf\n"
-	cat /etc/ssh/sshd_conf
+	printf -- "----- /etc/ssh/sshd_config\n"
+	cat /etc/ssh/sshd_config
 }
 
 add_ssh_keys() {
@@ -239,6 +247,7 @@ EOM
 _c update_system
 _c update_fstab
 _c update_resolv_conf
+_c set_localtime
 _c update_sysctl_conf
 _c update_crontab
 _c update_rc_conf
