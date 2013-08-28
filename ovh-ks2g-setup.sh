@@ -52,12 +52,8 @@ update_fstab() {
 
 update_sysctl_conf() {
 	cp /etc/sysctl.conf /etc/sysctl.conf.ovh
-	ex -s /etc/sysctl.conf <<-'EOM'
-		/net.inet6.ip6.accept_rtadv/d
-		a
+	cat > /etc/sysctl.conf <<-'EOM'
 		net.inet6.ip6.accept_rtadv=1
-		.
-		wq
 	EOM
 }
 
@@ -71,45 +67,40 @@ update_resolv_conf() {
 	EOM
 }
 
-update_rc_conf() {
+update_config() {
+
 	cp /etc/rc.conf /etc/rc.conf.ovh
-	# Yank network parameters from old rc.conf & generate new conf
-	ex -s /etc/rc.conf.ovh <<-'EOM'
-		/^ifconfig_em0/y a
-		/^defaultrouter/y b
-		/^ifconfig_em0_ipv6/y c
-		/^ipv6_defaultrouter/y d
-		/^hostname/y e
-		ex /etc/rc.conf
-		1,$d
-		a
+	_EXT_IF=$(route -n get -inet6 default | awk '/interface:/ { print $2 }')
+	_GATEWAY=$(route -n get -inet6 default | awk '/gateway:/ { print $2 }')
+	_HOSTNAME=$(hostname)
+	_IP=$(ifconfig $_EXT_IF | awk '/inet[^6]/ { print $0; exit }')
+	_IPV6=$(ifconfig $_EXT_IF | awk '/inet6/ { if ( substr($2,0,4) != "fe80" ) { print "inet6 " $2 " prefixlen 64 accept_rtadv"; exit } }')
+	_IPV6_GATEWAY=$(sed -ne 's/"//g' -e 's/ipv6_defaultrouter=//p' /etc/rc.conf)
+	
+	cat <<-EOM
 		# System
 		fsck_y_enable="YES"
 		dumpdev="AUTO"
 		cloned_interfaces="lo1"
 
 		# IPv4
-		.
-		put a
-		put b
-		a
+		ifconfig_${_EXT_IF}="${_IP}"
+		defaultrouter="${_GATEWAY}"
+		hostname="${_HOSTNAME}"
 
 		# IPv6
-		.
-		put c
-		/^ifconfig_em0_ipv6/s/prefixlen 128/prefixlen 64 accept_rtadv/
-		put d
-		put e
-		a
+		ifconfig_${_EXT_IF}_ipv6="${_IPV6}"
+		ipv6_defaultrouter="${_IPV6_GATEWAY}"
+
 		# Services
 		ntpdate_enable="YES"
 		ntpdate_hosts="213.186.33.99"
 		syslogd_flags="-s -b 127.0.0.1"
 		sshd_enable="YES"
 		gateway_enable="YES"
-		pf_enable="YES"
-		pflog_enable="YES"
-		ezjail_enable="YES"
+		#pf_enable="YES"
+		#pflog_enable="YES"
+		#ezjail_enable="YES"
 		.
 		wq
 	EOM
@@ -150,13 +141,9 @@ update_rc_conf() {
 
 update_crontab() {
 	cp /etc/crontab /etc/crontab.ovh
-	ex -s /etc/crontab <<-'EOM'
-		$
-		a
+	cat >> /etc/crontab <<-'EOM'
 		# Run ntpd -q hourly (rather than as daemon)
 		0	*	*	*	*	root	/usr/sbin/ntpd -gq >/dev/null
-		.
-		wq
 	EOM
 }
 
