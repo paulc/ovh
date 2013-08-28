@@ -42,7 +42,7 @@ update_fstab() {
 		proc                    /proc           procfs          rw      0       0
 		#/dev/ada0s1d           /pool           ufs             rw      2       2
 	EOM
-	printf "----- /etc/fstab\n"
+	printf -- "----- /etc/fstab\n"
 	cat /etc/fstab
 }
 
@@ -51,7 +51,7 @@ update_sysctl_conf() {
 	cat > /etc/sysctl.conf <<-'EOM'
 		net.inet6.ip6.accept_rtadv=1
 	EOM
-	printf "----- /etc/sysctl.conf\n"
+	printf -- "----- /etc/sysctl.conf\n"
 	cat /etc/sysctl.conf
 }
 
@@ -63,7 +63,7 @@ update_resolv_conf() {
 		nameserver 2001:4860:4860::8888
 		nameserver 2001:4860:4860::8844
 	EOM
-	printf "----- /etc/resolv.conf\n"
+	printf -- "----- /etc/resolv.conf\n"
 	cat /etc/resolv.conf
 }
 
@@ -104,7 +104,7 @@ update_rc_conf() {
 		#ezjail_enable="YES"
 	EOM
 
-	printf "----- /etc/rc.conf\n"
+	printf -- "----- /etc/rc.conf\n"
 	cat /etc/rc.conf
 }
 
@@ -117,7 +117,7 @@ create_startif_lo1() {
 		done
 	EOM
 	chmod 755 /etc/start_if.lo1
-	printf "----- /etc/start_if.lo1\n"
+	printf -- "----- /etc/start_if.lo1\n"
 	cat /etc//start_if.lo1
 }
 
@@ -146,7 +146,7 @@ create_pf_conf() {
 		anchor filter-anchor
 	EOM
 
-	printf "----- /etc/pf.conf\n"
+	printf -- "----- /etc/pf.conf\n"
 	cat /etc/pf.conf
 }
 
@@ -156,7 +156,7 @@ update_crontab() {
 		# Run ntpd -q hourly (rather than as daemon)
 		0	*	*	*	*	root	/usr/sbin/ntpd -gq >/dev/null
 	EOM
-	printf "----- /etc/crontab\n"
+	printf -- "----- /etc/crontab\n"
 	cat /etc/crontab
 }
 
@@ -181,7 +181,7 @@ update_sshd_config() {
 
 		Subsystem     sftp     /usr/libexec/sftp-server
 	EOM
-	printf "----- /etc/ssh/sshd_conf\n"
+	printf -- "----- /etc/ssh/sshd_conf\n"
 	cat /etc/ssh/sshd_conf
 }
 
@@ -190,7 +190,7 @@ add_ssh_keys() {
 		ssh-dss AAAAB3NzaC1kc3MAAACBAMfem4jte5ZNQQSey7D4X79Qkdiez+Y5vDHGsViqax8qAzMzPsDKGAAPkHhGsxjVpkNFU7XW+34GuXdNGnMUBfWfsx0nyF5t/sJagwpfOLRWPeqgblPnkRNKoeodVfrYZpo2o/4QVwGElZa9FE8XIPp7djMD2JrcBqYsSjjwJPNfAAAAFQCB49PxkuhSa5vickeUNdpNtVPpNQAAAIA7URcvIH0FlGSTqcQd9SjPIYFySHh4GcgSRbrmA8xhDoT/NAcBJN6EQuvsSPSxCJ++r2qd0qB1usVgzYurEraGaJXtLjd48ygYBit3x0qz7NULf+XjXb16He2ZrLBuiRgXcfumC+tA02sKosQV2PnOPLZ8tjgeqeHyiy3XnmgKrgAAAIBPBQuWS9S8xnS0fIX+CJmQGnekPU10bOsyyT1CO0xY1lyf7TmXTI0PpU0oF4v4JT/m+FAx0/+6sc78Rlv17SyFDm/xI5Rj6vFOCTRriNI0g+ZLjjqIf0KksTTEo4F0NPO7sOvHABvTXp/9L8qb7kCy6qVGRWDImA1H2upqhWJ+4A== paulc@Ians-iMac.local
 		ssh-dss AAAAB3NzaC1kc3MAAACBAJXBJs2SIP6QSw4SDs7mU+Czr+Ikr8UzbDR4/pf26B+hzrSQemnVrBx5XBniJ5aC4LwLG3plZprXe20B2sqb6PASDCMNtB8xBHtDTBR0vXNw/cb1r+1D1kS3/17Cy6KP8qVW1p045Dj3DqNVuS5Mab/CCNWHO5BtgQTPKn69YQaVAAAAFQCNXkXpImK/eHsL6JcHaUX+LRVccQAAAIANuzRtPfpekZegn5kb34fL1rWRvh0QNASEqpAqgxOhn1/G2TBXi3na5QoEGke/bzfybDaCoA0YBqly6ah2R0mczhvn7jqZUeH7UVu48y8kjNeVbfLrT9BVprreii16vb5+za+5XTVWoGv2VTh4/egVjkwb2X7ZSkBw4eAtvQCStgAAAIBLpRM3hcZL0M41PF9vkA5en28oKEkHHwie0cWAepH8pLmsdLhwKdoCx3sXTSD7eMf7CQ+8f6M5ZLbTtIGFiMNPG9nbM4IY/zntZiMOM4BNXr3BTKTVUm2eDSIicZWwL2Lefuz3nWWGtP0pSkYBQvxcA0EwS+SCfq6ABLPxbn87LQ== paulc@Dogwood-Minor.local
 	EOM
-	printf "----- /root/.ssh/authorized_keys\n"
+	printf -- "----- /root/.ssh/authorized_keys\n"
 	cat /root/.ssh/authorized_keys
 }
 
@@ -226,11 +226,11 @@ _IPV6=$(ifconfig $_EXT_IF | awk '/inet6/ { if ( substr($2,0,4) != "fe80" ) { pri
 
 cat <<-EOM
 
-    Updating System: $(hostname)
+Updating System: $(hostname)
 
-    External Interface:  $_EXT_IF
-    IP Address:          $_IP
-    IPV6 Address:        $_IPV6
+External Interface:  $_EXT_IF
+IP Address:          $_IP
+IPV6 Address:        $_IPV6
 	
 EOM
 
