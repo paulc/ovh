@@ -86,7 +86,7 @@ update_rc_conf() {
 		a
 		# System
 		fsck_y_enable="YES"
-		dumpdev="NO"
+		dumpdev="AUTO"
 		cloned_interfaces="lo1"
 
 		# IPv4
