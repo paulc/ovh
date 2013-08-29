@@ -5,12 +5,12 @@ _CYAN=$(echo -e "\e[0;36m")
 trap 'rm -f /tmp/err.* /tmp/out.*' EXIT
 
 _c() {
-	_cmd="$@"
+	local _cmd="$@"
 	printf "${COLOUR:+${_RED}}"
 	printf "%s [%s] %-40s\n" "$(date '+%b %d %T')" $name "CMD: $_cmd"
 	printf "${COLOUR:+${_CYAN}}"
 	eval "$_cmd" 2>&1 | sed -e 's/^/     | /'
-	_status=$?
+	local _status=$?
 	printf "${COLOUR:+${_RED}}"
 	[ $_status -eq 0 ] && printf "[OK]\n" || printf "[ERROR]\n"
 	printf "${COLOUR:+${_NORMAL}}"
@@ -18,7 +18,7 @@ _c() {
 }
 
 _backup() {
-	_f=$1
+	local _f=$1
 	if [ ! -f ${_f}.ovh ]
 	then
 		printf "Backing up file: %s -> %s.ovh " $_f $_f
@@ -26,6 +26,22 @@ _backup() {
 	else
 		printf "Backup file %s.ovh exists\n" $_f
 	fi
+}
+
+_check() {
+	[ "$1" = "-echo" ] && shift && local _echo=1
+	local _var="$1"
+	local _msg="$2"
+	local _default="$3"
+	local _r
+	if [ ${#_default} -gt 0 ]
+	then
+		read -p "${_msg} [${_default}]: " _r
+	else
+		read -p "${_msg}: " _r
+	fi
+	eval ${_var}=\"${_r:-${_default}}\"
+	[ "${_echo}" = 1 ] && eval echo \$${_var}
 }
 
 update_system() {
