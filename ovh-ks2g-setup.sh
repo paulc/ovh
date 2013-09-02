@@ -1,19 +1,19 @@
-_NORMAL=$(echo -e "\e[0m")
-_RED=$(echo -e "\e[0;31m")
-_CYAN=$(echo -e "\e[0;36m")
+#!/bin/sh
 
-trap 'rm -f /tmp/err.* /tmp/out.*' EXIT
+_NORMAL=$(printf "\033[0m")
+_RED=$(printf "\033[0;31m")
+_CYAN=$(printf "\033[0;36m")
 
-_c() {
-	local _cmd="$@"
-	printf "${COLOUR:+${_RED}}"
+_log() {
+	local _cmd="$*"
+	printf "${_COLOUR:+${_RED}}"
 	printf "%s [%s] %-40s\n" "$(date '+%b %d %T')" $name "CMD: $_cmd"
-	printf "${COLOUR:+${_CYAN}}"
+	printf "${_COLOUR:+${_CYAN}}"
 	eval "$_cmd" 2>&1 | sed -e 's/^/     | /'
 	local _status=$?
-	printf "${COLOUR:+${_RED}}"
+	printf "${_COLOUR:+${_RED}}"
 	[ $_status -eq 0 ] && printf "[OK]\n" || printf "[ERROR]\n"
-	printf "${COLOUR:+${_NORMAL}}"
+	printf "${_COLOUR:+${_NORMAL}}"
 	return $_status
 }
 
@@ -28,20 +28,62 @@ _backup() {
 	fi
 }
 
-_check() {
+_config() {
 	[ "$1" = "-echo" ] && shift && local _echo=1
 	local _var="$1"
 	local _msg="$2"
 	local _default="$3"
 	local _r
-	if [ ${#_default} -gt 0 ]
+	if eval [ \${#$_var} -gt 0 ]
 	then
-		read -p "${_msg} [${_default}]: " _r
-	else
-		read -p "${_msg}: " _r
+		eval _default="\$${_var}"
+	fi
+	if [ "$_AUTO" -ne 1 ]
+	then
+		if [ ${#_default} -gt 0 ]
+		then
+			read -p "${_msg} [${_default}]: " _r
+		else
+			read -p "${_msg}: " _r
+		fi
 	fi
 	eval ${_var}=\"${_r:-${_default}}\"
 	[ "${_echo}" = 1 ] && eval echo \$${_var}
+}
+
+_print() {
+	local _f="$1"
+	printf "$_f\n"
+	nl -ba "$_f"
+	sha1 "$_f"
+}
+
+_get_ext_if() {
+	route -n get -inet default | awk '/interface:/ { print $2 }'
+}
+
+_get_ipv4() {
+    ifconfig $_EXT_IF | awk '/inet[^6]/ { print $2; exit }'
+}
+
+_get_ipv4_mask() {
+	ifconfig $_EXT_IF | awk '/inet[^6]/ { print $4; exit }'
+}
+
+_get_ipv4_gw() {
+	route -n get -inet default | awk '/gateway:/ { print $2 }')
+}
+
+_get_ipv6() {
+	ifconfig $_EXT_IF | awk '/inet6/ { if ( substr($2,0,4) != "fe80" ) { print $4; exit } }')
+}
+
+_get_ipv6_prefix() {
+	ifconfig $_EXT_IF | awk '/inet6/ { if ( substr($2,0,4) != "fe80" ) { print $4; exit } }'
+}
+
+_get_ipv6_gw() {
+	route -n get -inet6 default | awk '/gateway:/ { print $2 }')
 }
 
 update_system() {
@@ -53,13 +95,12 @@ update_fstab() {
 	cat > /etc/fstab <<-'EOM'
 		# Device                Mountpoint      FStype  Options         Dump    Pass#
 		/dev/ada0s1a            /               ufs             rw      1       1
-		/dev/ada0s1b.eli        none            swap            sw      0       0
+		/dev/ada0s1b            none            swap            sw      0       0
 		tmpfs                   /tmp            tmpfs           rw,noexec,mode=777,size=1073741824 0 0
 		proc                    /proc           procfs          rw      0       0
 		#/dev/ada0s1d           /pool           ufs             rw      2       2
 	EOM
-	printf -- "----- /etc/fstab\n"
-	cat /etc/fstab
+	_print /etc/fstab
 }
 
 update_sysctl_conf() {
@@ -69,8 +110,7 @@ update_sysctl_conf() {
 		net.link.ether.inet.log_arp_movements=0
 		net.inet6.ip6.auto_linklocal=0
 	EOM
-	printf -- "----- /etc/sysctl.conf\n"
-	cat /etc/sysctl.conf
+	_print /etc/sysctl.conf
 }
 
 update_resolv_conf() {
@@ -81,35 +121,29 @@ update_resolv_conf() {
 		nameserver 2001:4860:4860::8888
 		nameserver 2001:4860:4860::8844
 	EOM
-	printf -- "----- /etc/resolv.conf\n"
-	cat /etc/resolv.conf
+	_print /etc/resolv.conf
 }
 
 update_rc_conf() {
 
 	_backup /etc/rc.conf
 
-	_EXT_IF=$(route -n get -inet default | awk '/interface:/ { print $2 }')
-	_GATEWAY=$(route -n get -inet default | awk '/gateway:/ { print $2 }')
-	_HOSTNAME=$(hostname)
-	_IP=$(ifconfig $_EXT_IF | | awk '/inet[^6]/ { printf( "inet %s netmask %s broadcast %s",$2,$4,$6); exit }')
-	_IPV6=$(ifconfig $_EXT_IF | awk '/inet6/ { if ( substr($2,0,4) != "fe80" ) { print "inet6 " $2 " prefixlen 64 accept_rtadv"; exit } }')
-	_IPV6_GATEWAY=$(sed -ne 's/"//g' -e 's/ipv6_defaultrouter=//p' /etc/rc.conf)
-	
 	cat > /etc/rc.conf <<-EOM
 		# System
 		fsck_y_enable="YES"
 		dumpdev="AUTO"
-		cloned_interfaces="lo1"
 
 		# IPv4
-		ifconfig_${_EXT_IF}="${_IP}"
-		defaultrouter="${_GATEWAY}"
+		ifconfig_${_EXT_IF}="inet ${_IPV4}"
+		defaultrouter="${_IPV4_GW}"
 		hostname="${_HOSTNAME}"
 
+		cloned_interfaces="lo1"
+		ipv4_addrs_lo1="10.0.1.1-63/24"
+
 		# IPv6
-		ifconfig_${_EXT_IF}_ipv6="${_IPV6}"
-		ipv6_defaultrouter="${_IPV6_GATEWAY}"
+		ifconfig_${_EXT_IF}_ipv6="inet6 ${_IPV6} prefixlen ${_IPV6_PREFIX}"
+		ipv6_defaultrouter="${_IPV6_GW}"
 
 		# Services
 		ntpdate_enable="YES"
@@ -117,30 +151,15 @@ update_rc_conf() {
 		syslogd_flags="-s -b 127.0.0.1"
 		sshd_enable="YES"
 		gateway_enable="YES"
-		#pf_enable="YES"
-		#pflog_enable="YES"
-		#ezjail_enable="YES"
+		pf_enable="YES"
+		pflog_enable="YES"
+		ezjail_enable="YES"
 	EOM
 
-	printf -- "----- /etc/rc.conf\n"
-	cat /etc/rc.conf
-}
-
-create_startif_lo1() {
-	cat > /etc/start_if.lo1 <<-'EOM'
-		#!/bin/sh
-		for i in $(jot -w 10.0.1. 24)
-		do
-			ifconfig lo1 inet $i/32 alias
-		done
-	EOM
-	chmod 755 /etc/start_if.lo1
-	printf -- "----- /etc/start_if.lo1\n"
-	cat /etc//start_if.lo1
+	_print /etc/rc.conf
 }
 
 create_pf_conf() {
-	_EXT_IF=$(route -n get -inet default | awk '/interface:/ { print $2 }')
 
 	sed -e "s/___EXT_IF___/${_EXT_IF}/" <<-'EOM' > /etc/pf.conf
 
@@ -164,8 +183,7 @@ create_pf_conf() {
 		anchor filter-anchor
 	EOM
 
-	printf -- "----- /etc/pf.conf\n"
-	cat /etc/pf.conf
+	_print /etc/pf.conf
 }
 
 set_localtime() {
@@ -180,17 +198,14 @@ update_crontab() {
 		# Run ntpd -q hourly (rather than as daemon)
 		0	*	*	*	*	root	/usr/sbin/ntpd -gq >/dev/null
 	EOM
-	printf -- "----- /etc/crontab\n"
-	cat /etc/crontab
+	_print /etc/crontab
 }
 
 update_sshd_config() {
-	_IP=$1
-	_IPV6=$2
 	_backup /etc/ssh/sshd_config
 	cat > /etc/ssh/sshd_config <<-EOM
 		Port 22
-		ListenAddress ${_IP}
+		ListenAddress ${_IPV4}
 		ListenAddress 127.0.0.1
 		ListenAddress ${_IPV6}
 		ListenAddress ::1
@@ -205,8 +220,7 @@ update_sshd_config() {
 
 		Subsystem     sftp     /usr/libexec/sftp-server
 	EOM
-	printf -- "----- /etc/ssh/sshd_config\n"
-	cat /etc/ssh/sshd_config
+	_print /etc/ssh/sshd_config
 }
 
 add_ssh_keys() {
@@ -214,8 +228,7 @@ add_ssh_keys() {
 		ssh-dss AAAAB3NzaC1kc3MAAACBAMfem4jte5ZNQQSey7D4X79Qkdiez+Y5vDHGsViqax8qAzMzPsDKGAAPkHhGsxjVpkNFU7XW+34GuXdNGnMUBfWfsx0nyF5t/sJagwpfOLRWPeqgblPnkRNKoeodVfrYZpo2o/4QVwGElZa9FE8XIPp7djMD2JrcBqYsSjjwJPNfAAAAFQCB49PxkuhSa5vickeUNdpNtVPpNQAAAIA7URcvIH0FlGSTqcQd9SjPIYFySHh4GcgSRbrmA8xhDoT/NAcBJN6EQuvsSPSxCJ++r2qd0qB1usVgzYurEraGaJXtLjd48ygYBit3x0qz7NULf+XjXb16He2ZrLBuiRgXcfumC+tA02sKosQV2PnOPLZ8tjgeqeHyiy3XnmgKrgAAAIBPBQuWS9S8xnS0fIX+CJmQGnekPU10bOsyyT1CO0xY1lyf7TmXTI0PpU0oF4v4JT/m+FAx0/+6sc78Rlv17SyFDm/xI5Rj6vFOCTRriNI0g+ZLjjqIf0KksTTEo4F0NPO7sOvHABvTXp/9L8qb7kCy6qVGRWDImA1H2upqhWJ+4A== paulc@Ians-iMac.local
 		ssh-dss AAAAB3NzaC1kc3MAAACBAJXBJs2SIP6QSw4SDs7mU+Czr+Ikr8UzbDR4/pf26B+hzrSQemnVrBx5XBniJ5aC4LwLG3plZprXe20B2sqb6PASDCMNtB8xBHtDTBR0vXNw/cb1r+1D1kS3/17Cy6KP8qVW1p045Dj3DqNVuS5Mab/CCNWHO5BtgQTPKn69YQaVAAAAFQCNXkXpImK/eHsL6JcHaUX+LRVccQAAAIANuzRtPfpekZegn5kb34fL1rWRvh0QNASEqpAqgxOhn1/G2TBXi3na5QoEGke/bzfybDaCoA0YBqly6ah2R0mczhvn7jqZUeH7UVu48y8kjNeVbfLrT9BVprreii16vb5+za+5XTVWoGv2VTh4/egVjkwb2X7ZSkBw4eAtvQCStgAAAIBLpRM3hcZL0M41PF9vkA5en28oKEkHHwie0cWAepH8pLmsdLhwKdoCx3sXTSD7eMf7CQ+8f6M5ZLbTtIGFiMNPG9nbM4IY/zntZiMOM4BNXr3BTKTVUm2eDSIicZWwL2Lefuz3nWWGtP0pSkYBQvxcA0EwS+SCfq6ABLPxbn87LQ== paulc@Dogwood-Minor.local
 	EOM
-	printf -- "----- /root/.ssh/authorized_keys\n"
-	cat /root/.ssh/authorized_keys
+	_print /root/.ssh/authorized_keys
 }
 
 remove_ovh_setup() {
@@ -233,43 +246,101 @@ setup_ezjail() {
 	pkg_add -r ezjail
 }
 
-##### Main
-
-if [ "$1" = "-rollback" ]
-then
-	for f in $(find . -name \*ovh)
+rollback() {
+	for f in $(find /etc -name \*ovh)
 	do
+		printf '%s -> %s\n' $f ${f%%.ovh}
 		cp $f ${f%%.ovh}
 	done
 	exit
-fi
+}
 
-_EXT_IF=$(route -n get default | awk '/interface:/ { print $2 }')
-_IP=$(ifconfig $_EXT_IF | awk '/inet[^6]/ { print $2; exit }')
-_IPV6=$(ifconfig $_EXT_IF | awk '/inet6/ { if ( substr($2,0,4) != "fe80" ) { print $2; exit } }')
+_interactive() {
+	_FUNCS="$(sed -ne '/^[a-zA-Z][a-zA-Z0-9_]*()/s/(.*//p' $0)"
+	while :
+	do
+		printf "Available Commands:\n"
+		for f in $_FUNCS
+		do
+			printf "  $f\n"
+		done
 
-cat <<-EOM
+		read -p "Command: " _f
+		if [ ${#_f} -gt 0 ]
+		then
+			eval _log $_f
+		else
+			break
+		fi
+	done
+}
 
-Updating System: $(hostname)
+_log remove_ovh_setup
+_log update_system
+_log update_fstab
+_log update_resolv_conf
+_log set_localtime
+_log update_sysctl_conf
+_log update_crontab
+_log update_rc_conf
+_log create_pf_conf
+_log update_sshd_config
+_log add_ssh_keys
+_log setup_ezjail
+
+#### MAIN
+
+[ -t 1 ] && _COLOUR=1
+
+_check _HOSTNAME    "Hostname"             $(hostname)
+_check _EXT_IF      "External Interface"   $(_get_ext_if)
+_check _IPV4        "IPv4 Address"         $(_get_ipv4)
+_check _IPV4_MASK   "IPv4 Netmask"         $(_get_ipv4_mask)
+_check _IPV4_GW	    "IPv4 Default Gateway" $(_get_ipv4_gw)
+_check _IPV6        "IPv6 Address"         $(_get_ipv6)
+_check _IPV6_PREFIX	"IPv6 Prefix Length"   $(_get_ipv6_prefix)
+_check _IPV6_GW     "IPv6 Default Gateway" $(_get_ipv6_gw)
+
+cat <<EOM
+
+Updating System: $_HOSTNAME
 
 External Interface:  $_EXT_IF
-IP Address:          $_IP
-IPV6 Address:        $_IPV6
-	
+IP Address:          $_IPV4 netmask $_IPV4_MASK 
+IP Gateway:          $_IPV4_GW
+IPv6 Address:        $_IPV6 prefixlen $_IPV6_PREFIX
+IPv6 Gateway:        $_IPV6_GW
+
 EOM
 
-[ -t 1 ] && COLOUR=1
+read -p "Continue [y/N]: " _yn
 
-_c update_system
-_c update_fstab
-_c update_resolv_conf
-_c set_localtime
-_c update_sysctl_conf
-_c update_crontab
-_c update_rc_conf
-_c create_startif_lo1
-_c create_pf_conf
-_c update_sshd_config $_IP $_IPV6
-_c remove_ovh_setup
-_c add_ssh_keys
-_c setup_ezjail
+if [ "${_yn}" = "y" -o "${_yn}" = "Y" ]
+then
+	case "$1" in
+		-i|--interactive) 
+			_interactive
+			exit
+		;;
+		-a|--auto)
+			_auto
+			exit
+		;;
+		*) 
+			eval _log $1	
+		;;
+	esac
+fi
+
+
+#cat <<-EOM
+#
+#Updating System: $(hostname)
+#
+#External Interface:  $_EXT_IF
+#IP Address:          $_IP
+#IPV6 Address:        $_IPV6
+#	
+#EOM
+#
+#
