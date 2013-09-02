@@ -38,7 +38,7 @@ _config() {
 	then
 		eval _default="\$${_var}"
 	fi
-	if [ "$_AUTO" -ne 1 ]
+	if [ "$_AUTO" != "1" ]
 	then
 		if [ ${#_default} -gt 0 ]
 		then
@@ -71,11 +71,11 @@ _get_ipv4_mask() {
 }
 
 _get_ipv4_gw() {
-	route -n get -inet default | awk '/gateway:/ { print $2 }')
+	route -n get -inet default | awk '/gateway:/ { print $2 }'
 }
 
 _get_ipv6() {
-	ifconfig $_EXT_IF | awk '/inet6/ { if ( substr($2,0,4) != "fe80" ) { print $4; exit } }')
+	ifconfig $_EXT_IF | awk '/inet6/ { if ( substr($2,0,4) != "fe80" ) { print $2; exit } }'
 }
 
 _get_ipv6_prefix() {
@@ -83,7 +83,7 @@ _get_ipv6_prefix() {
 }
 
 _get_ipv6_gw() {
-	route -n get -inet6 default | awk '/gateway:/ { print $2 }')
+	route -n get -inet6 default | awk '/gateway:/ { print $2 }'
 }
 
 update_system() {
@@ -275,31 +275,33 @@ _interactive() {
 	done
 }
 
-_log remove_ovh_setup
-_log update_system
-_log update_fstab
-_log update_resolv_conf
-_log set_localtime
-_log update_sysctl_conf
-_log update_crontab
-_log update_rc_conf
-_log create_pf_conf
-_log update_sshd_config
-_log add_ssh_keys
-_log setup_ezjail
+_auto() {
+	_log remove_ovh_setup
+	_log update_system
+	_log update_fstab
+	_log update_resolv_conf
+	_log set_localtime
+	_log update_sysctl_conf
+	_log update_crontab
+	_log update_rc_conf
+	_log create_pf_conf
+	_log update_sshd_config
+	_log add_ssh_keys
+	_log setup_ezjail
+}
 
 #### MAIN
 
 [ -t 1 ] && _COLOUR=1
 
-_check _HOSTNAME    "Hostname"             $(hostname)
-_check _EXT_IF      "External Interface"   $(_get_ext_if)
-_check _IPV4        "IPv4 Address"         $(_get_ipv4)
-_check _IPV4_MASK   "IPv4 Netmask"         $(_get_ipv4_mask)
-_check _IPV4_GW	    "IPv4 Default Gateway" $(_get_ipv4_gw)
-_check _IPV6        "IPv6 Address"         $(_get_ipv6)
-_check _IPV6_PREFIX	"IPv6 Prefix Length"   $(_get_ipv6_prefix)
-_check _IPV6_GW     "IPv6 Default Gateway" $(_get_ipv6_gw)
+_config _HOSTNAME    "Hostname"             $(hostname)
+_config _EXT_IF      "External Interface"   $(_get_ext_if)
+_config _IPV4        "IPv4 Address"         $(_get_ipv4)
+_config _IPV4_MASK   "IPv4 Netmask"         $(_get_ipv4_mask)
+_config _IPV4_GW     "IPv4 Default Gateway" $(_get_ipv4_gw)
+_config _IPV6        "IPv6 Address"         $(_get_ipv6)
+_config _IPV6_PREFIX "IPv6 Prefix Length"   $(_get_ipv6_prefix)
+_config _IPV6_GW     "IPv6 Default Gateway" $(_get_ipv6_gw)
 
 cat <<EOM
 
@@ -318,7 +320,7 @@ read -p "Continue [y/N]: " _yn
 if [ "${_yn}" = "y" -o "${_yn}" = "Y" ]
 then
 	case "$1" in
-		-i|--interactive) 
+		-i|--interactive|"") 
 			_interactive
 			exit
 		;;
@@ -332,15 +334,3 @@ then
 	esac
 fi
 
-
-#cat <<-EOM
-#
-#Updating System: $(hostname)
-#
-#External Interface:  $_EXT_IF
-#IP Address:          $_IP
-#IPV6 Address:        $_IPV6
-#	
-#EOM
-#
-#
