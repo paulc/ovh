@@ -1,9 +1,15 @@
 #!/bin/sh
 
+##
+# Utility Functions
+##
+
 _NORMAL=$(printf "\033[0m")
 _RED=$(printf "\033[0;31m")
 _CYAN=$(printf "\033[0;36m")
 
+# Log shell command and status to stdout indenting output 
+# (optionally in colour)
 _log() {
 	local _cmd="$*"
 	printf "${_COLOUR:+${_RED}}"
@@ -17,6 +23,7 @@ _log() {
 	return $_status
 }
 
+# Backup configuration file
 _backup() {
 	local _f=$1
 	if [ ! -f ${_f}.ovh ]
@@ -28,16 +35,44 @@ _backup() {
 	fi
 }
 
+# Get functions from script (not prefixed with _) and run interactively
+_interactive() {
+	_FUNCS="$(sed -ne '/^[a-zA-Z][a-zA-Z0-9_]*()/s/(.*//p' $0)"
+	while :
+	do
+		printf "Available Commands:\n"
+		for f in $_FUNCS
+		do
+			printf "  $f\n"
+		done
+
+		read -p "Command: " _f
+		if [ ${#_f} -gt 0 ]
+		then
+			eval _log $_f
+		else
+			break
+		fi
+	done
+}
+
+# Get configuration variable interactively or automatically (if _AUTO=1)
+# Default value is calculated from existing variable value (if set) or
+# the argument provided (which would normally be a shell command inspecting
+# system
 _config() {
+	# Echo output if -echo flag set
 	[ "$1" = "-echo" ] && shift && local _echo=1
 	local _var="$1"
 	local _msg="$2"
 	local _default="$3"
 	local _r
+	# Check if _var is alraedy set - if so use as default rather than arg
 	if eval [ \${#$_var} -gt 0 ]
 	then
 		eval _default="\$${_var}"
 	fi
+	# If _AUTO != 1 prompt interactively
 	if [ "$_AUTO" != "1" ]
 	then
 		if [ ${#_default} -gt 0 ]
@@ -47,16 +82,22 @@ _config() {
 			read -p "${_msg}: " _r
 		fi
 	fi
+	# Set variable
 	eval ${_var}=\"${_r:-${_default}}\"
 	[ "${_echo}" = 1 ] && eval echo \$${_var}
 }
 
+# Print file with title & line numbers
 _print() {
 	local _f="$1"
 	printf "$_f\n"
 	nl -ba "$_f"
 	sha1 "$_f"
 }
+
+##
+# Utilities to inspect system
+##
 
 _get_ext_if() {
 	route -n get -inet default | awk '/interface:/ { print $2 }'
@@ -89,6 +130,10 @@ _get_ipv6_gw() {
 update_system() {
 	(freebsd-update fetch && freebsd-update install) | cat 
 }
+
+##
+# System configuration 
+##
 
 update_fstab() {
 	_backup /etc/fstab
@@ -142,7 +187,7 @@ update_rc_conf() {
 		ipv4_addrs_lo1="10.0.1.1-63/24"
 
 		# IPv6
-		ifconfig_${_EXT_IF}_ipv6="inet6 ${_IPV6} prefixlen ${_IPV6_PREFIX}"
+		ifconfig_${_EXT_IF}_ipv6="inet6 ${_IPV6} prefixlen ${_IPV6_PREFIX} accept_rtadv"
 		ipv6_defaultrouter="${_IPV6_GW}"
 
 		# Services
@@ -154,6 +199,7 @@ update_rc_conf() {
 		pf_enable="YES"
 		pflog_enable="YES"
 		ezjail_enable="YES"
+		zfs_enable="YES"
 	EOM
 
 	_print /etc/rc.conf
@@ -242,8 +288,27 @@ remove_ovh_setup() {
 	EOM
 }
 
+setup_zfs() {
+	mount | grep -q /dev/ada0s1d && umount -f /dev/ada0s1d
+	service zfs onestart
+	zpool create -f pool ada0s1d
+	printf -- '--- ZPOOL\n'
+	zpool list
+	zfs create pool/jail
+	printf -- '--- ZFS\n'
+	zfs list
+}
+
 setup_ezjail() {
 	pkg_add -r ezjail
+	cat > /usr/local/etc/ezjail.conf <<-EOM
+		ezjail_use_zfs="YES"
+		ezjail_use_zfs_for_jails="YES"
+		ezjail_jailzfs="pool/ezjail"
+	EOM
+	mkdir /usr/jails
+	/usr/local/bin/ezjail-admin install -r "9.1-RELEASE"
+	/usr/local/bin/ezjail-admin update -u
 }
 
 rollback() {
@@ -253,26 +318,6 @@ rollback() {
 		cp $f ${f%%.ovh}
 	done
 	exit
-}
-
-_interactive() {
-	_FUNCS="$(sed -ne '/^[a-zA-Z][a-zA-Z0-9_]*()/s/(.*//p' $0)"
-	while :
-	do
-		printf "Available Commands:\n"
-		for f in $_FUNCS
-		do
-			printf "  $f\n"
-		done
-
-		read -p "Command: " _f
-		if [ ${#_f} -gt 0 ]
-		then
-			eval _log $_f
-		else
-			break
-		fi
-	done
 }
 
 _auto() {
@@ -287,6 +332,7 @@ _auto() {
 	_log create_pf_conf
 	_log update_sshd_config
 	_log add_ssh_keys
+	_log setup_zfs
 	_log setup_ezjail
 }
 
