@@ -304,7 +304,7 @@ setup_ezjail() {
 	cat > /usr/local/etc/ezjail.conf <<-EOM
 		ezjail_use_zfs="YES"
 		ezjail_use_zfs_for_jails="YES"
-		ezjail_jailzfs="pool/ezjail"
+		ezjail_jailzfs="pool/jail"
 	EOM
 	mkdir /usr/jails
 	/usr/local/bin/ezjail-admin install -r "9.1-RELEASE"
