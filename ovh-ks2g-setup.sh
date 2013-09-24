@@ -294,9 +294,6 @@ setup_zfs() {
 	zpool create -f pool ada0s1d
 	printf -- '--- ZPOOL\n'
 	zpool list
-	zfs create pool/jail
-	printf -- '--- ZFS\n'
-	zfs list
 }
 
 setup_ezjail() {
