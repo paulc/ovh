@@ -99,7 +99,7 @@ _print() {
 # Utilities to inspect system
 ##
 
-rc_conf_get() {
+_rc_conf_get() {
 	sed -ne "/^$1=/s/.*=\"*\([^\"]*\).*/\1/p"  /etc/rc.conf
 }
 
