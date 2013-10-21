@@ -99,6 +99,10 @@ _print() {
 # Utilities to inspect system
 ##
 
+rc_conf_get() {
+	sed -ne "/^$1=/s/.*=\"*\([^\"]*\).*/\1/p"  /etc/rc.conf
+}
+
 _get_ext_if() {
 	route -n get -inet default | awk '/interface:/ { print $2 }'
 }
