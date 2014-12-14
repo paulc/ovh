@@ -1,0 +1,1 @@
+pfctl -a redirect-anchor -f /etc/pf.jail 

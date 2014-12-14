@@ -1,0 +1,2 @@
+rdr pass on em0 inet proto tcp from any to any port = 8022 -> 10.0.1.1 port 22
+rdr pass on em0 inet proto tcp from any to any port = 8023 -> 10.0.1.4 port 22

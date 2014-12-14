@@ -1,0 +1,19 @@
+sshd_enable="YES"
+ntpdate_enable="YES"
+ntpdate_hosts="213.186.33.99"
+fsck_y_enable="YES"
+named_enable="YES"
+# Set dumpdev to "AUTO" to enable crash dumps, "NO" to disable
+dumpdev="NO"
+
+ifconfig_em0="inet 37.187.16.95 netmask 255.255.255.0 broadcast 37.187.16.255"
+defaultrouter="37.187.16.254"
+
+# IPv6 configuration
+ipv6_enable="YES"
+ipv6_network_interfaces="em0"
+ifconfig_em0_ipv6="inet6 2001:41D0:A:105f::1 prefixlen 128"
+ipv6_static_routes="ovhgw"
+ipv6_route_ovhgw="2001:41D0:A:10ff:ff:ff:ff:ff -prefixlen 128 -interface em0"
+ipv6_defaultrouter="2001:41D0:A:10ff:ff:ff:ff:ff"
+hostname="ks3352212.kimsufi.com"
