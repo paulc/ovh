@@ -1,6 +1,6 @@
 
 # Remove RTM
-# Edit crontab /rtm/d
+sed -i '' '/rtm/d' /etc/crontab
 rmuser -vy ovh
 rm -rf /usr/local/rtm/
 pkg delete -f \*
@@ -8,11 +8,13 @@ pkg delete -f \*
 # Initialise pkg
 ASSUME_ALWAYS_YES=1 pkg bootstrap -f
 
-# Disable sendmail/unbound
+# Disable sendmail
 sysrc sendmail_enable=NONE
-sysrc local_unbound_enable=NO
 
 # Update system
 freebsd-update fetch
 freebsd-update install
+
+# Reboot
+reboot
 
