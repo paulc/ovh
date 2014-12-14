@@ -1,3 +1,4 @@
+#!/bin/sh
 
 # Remove RTM
 sed -i '' '/rtm/d' /etc/crontab
@@ -10,6 +11,12 @@ ASSUME_ALWAYS_YES=1 pkg bootstrap -f
 
 # Disable sendmail
 sysrc sendmail_enable=NONE
+
+# Change shell to /bin/sh
+chsh -s /bin/sh
+
+# Set password
+passwd
 
 # Update system
 freebsd-update fetch
