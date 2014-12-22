@@ -17,7 +17,7 @@ sysrc sendmail_enable=NONE
 chsh -s /bin/sh
 
 # Set password
-passwd
+pw user mod root -h 0
 
 # Update system
 freebsd-update fetch
