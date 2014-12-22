@@ -4,10 +4,11 @@
 sed -i '' '/rtm/d' /etc/crontab
 rmuser -vy ovh
 rm -rf /usr/local/rtm/
-pkg delete -yf \*
 
-# Initialise pkg
-ASSUME_ALWAYS_YES=1 pkg bootstrap -yf
+# Remove and re-initialise pkg
+export ASSUME_ALWAYS_YES=true
+pkg delete -yf \*
+pkg bootstrap -yf
 
 # Disable sendmail
 sysrc sendmail_enable=NONE
